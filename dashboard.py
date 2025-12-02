@@ -75,27 +75,54 @@ def montar_base(adm, dem, exames, epi, adt13, produtores):
     # ADT 13 / FERIAS
     adt_base = adt13.copy()
     
-    # Renomeia as colunas conforme a estrutura do arquivo
-    adt_base.rename(columns={"Lancamento": "TipoExtra"}, inplace=True)
+    # Identifica qual coluna tem o tipo de lançamento
+    coluna_tipo = None
+    for col in ["Lancamento", "TipoLancamento", "Tipo", "TipoExtra"]:
+        if col in adt_base.columns:
+            coluna_tipo = col
+            break
     
-    adt_base["TipoMovimento"] = "Extra"
-    adt_base["ValorExame"] = 0
-    adt_base["ValorEPI"] = 0
-    adt_base["MultaFGTS"] = 0
+    # Identifica qual coluna tem o valor
+    coluna_valor = None
+    for col in ["ValorLiquido", "Valor", "ValorTotal", "Total"]:
+        if col in adt_base.columns:
+            coluna_valor = col
+            break
+    
+    # Se não encontrou as colunas necessárias, cria valores zerados
+    if coluna_tipo is None or coluna_valor is None:
+        adt_base["TipoExtra"] = ""
+        adt_base["TipoMovimento"] = "Extra"
+        adt_base["ValorExame"] = 0
+        adt_base["ValorEPI"] = 0
+        adt_base["ValorLiquido"] = 0
+        adt_base["MultaFGTS"] = 0
+        adt_base["ValorADT13"] = 0
+        adt_base["Valor13"] = 0
+        adt_base["ValorFerias"] = 0
+    else:
+        # Cria a coluna TipoExtra se não existir
+        if coluna_tipo != "TipoExtra":
+            adt_base["TipoExtra"] = adt_base[coluna_tipo]
+        
+        adt_base["TipoMovimento"] = "Extra"
+        adt_base["ValorExame"] = 0
+        adt_base["ValorEPI"] = 0
+        adt_base["MultaFGTS"] = 0
 
-    # Cria as colunas de valores baseadas no tipo de lançamento
-    adt_base["ValorADT13"] = adt_base.apply(
-        lambda x: x["ValorLiquido"] if x["TipoExtra"] == "ADT13" else 0, axis=1
-    )
-    adt_base["Valor13"] = adt_base.apply(
-        lambda x: x["ValorLiquido"] if x["TipoExtra"] == "13" else 0, axis=1
-    )
-    adt_base["ValorFerias"] = adt_base.apply(
-        lambda x: x["ValorLiquido"] if x["TipoExtra"] == "Ferias" else 0, axis=1
-    )
-    
-    # Zera ValorLiquido pois será usado apenas nas demissões
-    adt_base["ValorLiquido"] = 0
+        # Cria as colunas de valores baseadas no tipo de lançamento
+        adt_base["ValorADT13"] = adt_base.apply(
+            lambda x: x[coluna_valor] if x["TipoExtra"] == "ADT13" else 0, axis=1
+        )
+        adt_base["Valor13"] = adt_base.apply(
+            lambda x: x[coluna_valor] if x["TipoExtra"] == "13" else 0, axis=1
+        )
+        adt_base["ValorFerias"] = adt_base.apply(
+            lambda x: x[coluna_valor] if x["TipoExtra"] == "Ferias" else 0, axis=1
+        )
+        
+        # Zera ValorLiquido pois será usado apenas nas demissões
+        adt_base["ValorLiquido"] = 0
 
     # JUNÇÃO FINAL
     base = pd.concat([adm_base, dem_base, exames_base, epi_base, adt_base], ignore_index=True)
