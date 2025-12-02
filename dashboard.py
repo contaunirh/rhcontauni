@@ -282,14 +282,15 @@ try:
         # Exportar para Excel
         from io import BytesIO
         buffer = BytesIO()
-        with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+        with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
             filtro.to_excel(writer, sheet_name='Dados', index=False)
+            writer.close()
         
         st.download_button(
             label="📥 Exportar Excel",
             data=buffer.getvalue(),
             file_name=f'relatorio_rh_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx',
-            mime='application/vnd.ms-excel'
+            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )
     
     # Mostra a tabela
