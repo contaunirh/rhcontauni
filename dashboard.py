@@ -31,49 +31,78 @@ def montar_base(adm, dem, exames, epi, adt13, produtores):
 
     # ADM
     adm_base = adm.copy()
+    # Converte coluna de data para formato sem hora
+    if "DataAdmissao" in adm_base.columns:
+        adm_base["DataAdmissao"] = pd.to_datetime(adm_base["DataAdmissao"]).dt.date
+    elif "Data" in adm_base.columns:
+        adm_base["Data"] = pd.to_datetime(adm_base["Data"]).dt.date
+    
     adm_base["TipoMovimento"] = "Admissao"
     adm_base["ValorExame"] = 0
     adm_base["ValorEPI"] = 0
-    adm_base["ValorLiquido"] = 0
+    adm_base["Rescisao"] = 0
     adm_base["MultaFGTS"] = 0
-    adm_base["ValorADT13"] = 0
-    adm_base["Valor13"] = 0
-    adm_base["ValorFerias"] = 0
+    adm_base["ADT13"] = 0
+    adm_base["Decimo13"] = 0
+    adm_base["Ferias"] = 0
 
     # DEMISSÕES / RESCISÕES
     dem_base = dem.copy()
+    # Converte coluna de data para formato sem hora
+    if "DataDemissao" in dem_base.columns:
+        dem_base["DataDemissao"] = pd.to_datetime(dem_base["DataDemissao"]).dt.date
+    elif "Data" in dem_base.columns:
+        dem_base["Data"] = pd.to_datetime(dem_base["Data"]).dt.date
+    
     dem_base["TipoMovimento"] = "Demissao"
-    dem_base.rename(columns={"LiquidoRescisao": "ValorLiquido", "MultaFGTS": "MultaFGTS"}, inplace=True)
+    dem_base.rename(columns={"LiquidoRescisao": "Rescisao", "MultaFGTS": "MultaFGTS"}, inplace=True)
     dem_base["ValorExame"] = 0
     dem_base["ValorEPI"] = 0
-    dem_base["ValorADT13"] = 0
-    dem_base["Valor13"] = 0
-    dem_base["ValorFerias"] = 0
+    dem_base["ADT13"] = 0
+    dem_base["Decimo13"] = 0
+    dem_base["Ferias"] = 0
 
     # EXAMES
     exames_base = exames.copy()
+    # Converte coluna de data para formato sem hora
+    if "DataExame" in exames_base.columns:
+        exames_base["DataExame"] = pd.to_datetime(exames_base["DataExame"]).dt.date
+    elif "Data" in exames_base.columns:
+        exames_base["Data"] = pd.to_datetime(exames_base["Data"]).dt.date
+    
     exames_base["TipoMovimento"] = "Exame"
     exames_base.rename(columns={"ValorExame": "ValorExame"}, inplace=True)
-    exames_base["ValorLiquido"] = 0
+    exames_base["Rescisao"] = 0
     exames_base["ValorEPI"] = 0
     exames_base["MultaFGTS"] = 0
-    exames_base["ValorADT13"] = 0
-    exames_base["Valor13"] = 0
-    exames_base["ValorFerias"] = 0
+    exames_base["ADT13"] = 0
+    exames_base["Decimo13"] = 0
+    exames_base["Ferias"] = 0
 
     # EPI / UNIFORMES
     epi_base = epi.copy()
+    # Converte coluna de data para formato sem hora
+    if "DataEntrega" in epi_base.columns:
+        epi_base["DataEntrega"] = pd.to_datetime(epi_base["DataEntrega"]).dt.date
+    elif "Data" in epi_base.columns:
+        epi_base["Data"] = pd.to_datetime(epi_base["Data"]).dt.date
+    
     epi_base["TipoMovimento"] = "EPI"
     epi_base.rename(columns={"ValorEPI": "ValorEPI"}, inplace=True)
-    epi_base["ValorLiquido"] = 0
+    epi_base["Rescisao"] = 0
     epi_base["ValorExame"] = 0
     epi_base["MultaFGTS"] = 0
-    epi_base["ValorADT13"] = 0
-    epi_base["Valor13"] = 0
-    epi_base["ValorFerias"] = 0
+    epi_base["ADT13"] = 0
+    epi_base["Decimo13"] = 0
+    epi_base["Ferias"] = 0
 
     # ADT 13 / FERIAS
     adt_base = adt13.copy()
+    # Converte coluna de data para formato sem hora
+    if "DataPagamento" in adt_base.columns:
+        adt_base["DataPagamento"] = pd.to_datetime(adt_base["DataPagamento"]).dt.date
+    elif "Data" in adt_base.columns:
+        adt_base["Data"] = pd.to_datetime(adt_base["Data"]).dt.date
     
     # Identifica qual coluna tem o tipo de lançamento
     coluna_tipo = None
@@ -92,37 +121,41 @@ def montar_base(adm, dem, exames, epi, adt13, produtores):
     # Se não encontrou as colunas necessárias, cria valores zerados
     if coluna_tipo is None or coluna_valor is None:
         adt_base["TipoExtra"] = ""
-        adt_base["TipoMovimento"] = "Extra"
+        adt_base["TipoMovimento"] = ""
         adt_base["ValorExame"] = 0
         adt_base["ValorEPI"] = 0
-        adt_base["ValorLiquido"] = 0
+        adt_base["Rescisao"] = 0
         adt_base["MultaFGTS"] = 0
-        adt_base["ValorADT13"] = 0
-        adt_base["Valor13"] = 0
-        adt_base["ValorFerias"] = 0
+        adt_base["ADT13"] = 0
+        adt_base["Decimo13"] = 0
+        adt_base["Ferias"] = 0
     else:
         # Cria a coluna TipoExtra se não existir
         if coluna_tipo != "TipoExtra":
             adt_base["TipoExtra"] = adt_base[coluna_tipo]
         
-        adt_base["TipoMovimento"] = "Extra"
+        # Define o TipoMovimento baseado no TipoExtra
+        adt_base["TipoMovimento"] = adt_base["TipoExtra"].apply(
+            lambda x: "ADT 13º" if x == "ADT13" else ("13º Salário" if x == "13" else "Férias")
+        )
+        
         adt_base["ValorExame"] = 0
         adt_base["ValorEPI"] = 0
         adt_base["MultaFGTS"] = 0
 
         # Cria as colunas de valores baseadas no tipo de lançamento
-        adt_base["ValorADT13"] = adt_base.apply(
+        adt_base["ADT13"] = adt_base.apply(
             lambda x: x[coluna_valor] if x["TipoExtra"] == "ADT13" else 0, axis=1
         )
-        adt_base["Valor13"] = adt_base.apply(
+        adt_base["Decimo13"] = adt_base.apply(
             lambda x: x[coluna_valor] if x["TipoExtra"] == "13" else 0, axis=1
         )
-        adt_base["ValorFerias"] = adt_base.apply(
+        adt_base["Ferias"] = adt_base.apply(
             lambda x: x[coluna_valor] if x["TipoExtra"] == "Ferias" else 0, axis=1
         )
         
-        # Zera ValorLiquido pois será usado apenas nas demissões
-        adt_base["ValorLiquido"] = 0
+        # Zera Rescisao pois será usado apenas nas demissões
+        adt_base["Rescisao"] = 0
 
     # JUNÇÃO FINAL
     base = pd.concat([adm_base, dem_base, exames_base, epi_base, adt_base], ignore_index=True)
@@ -203,15 +236,15 @@ try:
 
     col1.metric("Admissões", filtro[filtro["TipoMovimento"] == "Admissao"].shape[0])
     col2.metric("Demissões", filtro[filtro["TipoMovimento"] == "Demissao"].shape[0])
-    col3.metric("Rescisão líquida R$", f"{filtro['ValorLiquido'].sum():,.2f}")
+    col3.metric("Rescisão R$", f"{filtro['Rescisao'].sum():,.2f}")
     col4.metric("Multa FGTS R$", f"{filtro['MultaFGTS'].sum():,.2f}")
     col5.metric("Exames R$", f"{filtro['ValorExame'].sum():,.2f}")
     col6.metric("Uniformes e EPI R$", f"{filtro['ValorEPI'].sum():,.2f}")
 
     col7, col8, col9 = st.columns(3)
-    col7.metric("Férias R$", f"{filtro['ValorFerias'].sum():,.2f}")
-    col8.metric("ADT13 R$", f"{filtro['ValorADT13'].sum():,.2f}")
-    col9.metric("13º R$", f"{filtro['Valor13'].sum():,.2f}")
+    col7.metric("Férias R$", f"{filtro['Ferias'].sum():,.2f}")
+    col8.metric("ADT 13º R$", f"{filtro['ADT13'].sum():,.2f}")
+    col9.metric("13º Salário R$", f"{filtro['Decimo13'].sum():,.2f}")
 
     # ===============================
     # GRÁFICO POR PRODUTOR
@@ -221,16 +254,27 @@ try:
 
     if not filtro.empty:
         graf = (
-            filtro.groupby("Produtor")[["ValorLiquido", "ValorExame", "ValorEPI",
-                                        "ValorADT13", "Valor13", "ValorFerias", "MultaFGTS"]]
+            filtro.groupby("Produtor")[["Rescisao", "ValorExame", "ValorEPI",
+                                        "ADT13", "Decimo13", "Ferias", "MultaFGTS"]]
             .sum()
             .reset_index()
         )
 
+        # Renomeia as colunas para exibição no gráfico
+        graf_display = graf.rename(columns={
+            "Rescisao": "Rescisão Líquida",
+            "ValorExame": "Exames",
+            "ValorEPI": "EPI/Uniformes",
+            "ADT13": "ADT 13º",
+            "Decimo13": "13º Salário",
+            "Ferias": "Férias",
+            "MultaFGTS": "Multa FGTS"
+        })
+
         fig = px.bar(
-            graf,
+            graf_display,
             x="Produtor",
-            y=["ValorLiquido", "ValorExame", "ValorEPI", "ValorADT13", "Valor13", "ValorFerias", "MultaFGTS"],
+            y=["Rescisão Líquida", "Exames", "EPI/Uniformes", "ADT 13º", "13º Salário", "Férias", "Multa FGTS"],
             barmode="group",
             title="Custos por Produtor",
             height=500,
