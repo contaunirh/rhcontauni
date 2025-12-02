@@ -78,8 +78,6 @@ def montar_base_indicadores():
     dem = demissoes.copy()
     if not dem.empty:
         dem["TipoMovimento"] = "Demissao"
-
-        # Correções importantes:
         dem["ValorLiquido"] = dem.get("ValorLiquido", 0)
         dem["MultaFGTS"] = dem.get("ValorMultaFGTS", 0)
 
@@ -95,7 +93,7 @@ def montar_base_indicadores():
         exams["TipoMovimento"] = "Exame"
         exams.rename(columns={"Valor": "ValorExame"}, inplace=True)
 
-    # ADT13 + Férias
+    # ADT13, 13º e Férias
     adt = adt13.copy()
     if not adt.empty:
         adt["TipoMovimento"] = adt["TipoLancamento"]
@@ -106,7 +104,7 @@ def montar_base_indicadores():
 
     # Unificando tudo
     frames = [adm, dem, exams, epi_df, adt]
-    base = pd.concat([f for f in frames if f is not None and not f.empty], ignore_index=True)
+    base = pd.concat([f for f in frames if not f.empty], ignore_index=True)
 
     return base
 
@@ -133,7 +131,7 @@ mes_sel = filtro_multiselect("Mês", "Mes")
 tipo_sel = filtro_multiselect("Tipo de movimento", "TipoMovimento")
 extra_sel = filtro_multiselect("Tipo Extra (ADT13 / 13 / Férias)", "TipoLancamento")
 
-# Aplicação dos filtros
+# Filtros aplicados
 filtro = base.copy()
 
 def aplicar(coluna, selecao):
@@ -174,7 +172,6 @@ col4.metric("Multa FGTS R$", round(filtro.get("MultaFGTS", 0).sum(), 2))
 col5.metric("Exames R$", round(filtro.get("ValorExame", 0).sum(), 2))
 col6.metric("Uniformes e EPI R$", round(filtro.get("ValorEPI", 0).sum(), 2))
 
-# Linha adicional
 col7, col8, col9 = st.columns(3)
 col7.metric("Férias R$", round(filtro.get("ValorFerias", 0).sum(), 2))
 col8.metric("ADT13 R$", round(filtro.get("ValorADT13", 0).sum(), 2))
