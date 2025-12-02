@@ -54,7 +54,14 @@ def montar_base(adm, dem, exames, epi, adt13, produtores):
     
     dem_base["TipoMovimento"] = "Demissão"
     dem_base["Produtor"] = dem_base["Filial"].map(prod_map)
-    dem_base.rename(columns={"LiquidoRescisao": "Rescisao"}, inplace=True)
+    
+    # Mapeamento correto da coluna de rescisão
+    if "LiquidoRescisao" in dem_base.columns:
+        dem_base["Rescisao"] = dem_base["LiquidoRescisao"]
+    elif "LiquidoRe" in dem_base.columns:
+        dem_base["Rescisao"] = dem_base["LiquidoRe"]
+    else:
+        dem_base["Rescisao"] = 0
     
     # Garante que MultaFGTS existe
     if "MultaFGTS" not in dem_base.columns:
@@ -151,6 +158,13 @@ try:
     st.title("ContaUni")
     st.subheader("Contabilidade Unindo Sonhos com Resultados!")
     st.markdown("### Sistema de Indicadores do Departamento Pessoal")
+    
+    # DEBUG: Mostrar colunas (remover depois)
+    with st.expander("🔍 Debug - Colunas das planilhas"):
+        st.write("**Demissões:**", list(dem.columns))
+        st.write("**Admissões:**", list(adm.columns))
+        st.write("**Base unificada:**", list(base.columns))
+    
     st.write("---")
 
     # ===============================
