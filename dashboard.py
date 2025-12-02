@@ -420,6 +420,14 @@ try:
     st.write("---")
     st.caption("© 2025 ContaUni - Contabilidade Unindo Sonhos com Resultados | Dashboard desenvolvido com Streamlit")
 
+    # FOOTER
+    st.write("---")
+    col_footer1, col_footer2 = st.columns([3, 1])
+    with col_footer1:
+        st.caption("© 2025 ContaUni - Contabilidade Unindo Sonhos com Resultados")
+    with col_footer2:
+        st.caption("💻 Desenvolvido por **Deivth Azevedo**")
+
 except FileNotFoundError as e:
     st.error(f"❌ Erro ao carregar arquivos: {e}")
     st.info("💡 Verifique se todos os arquivos Excel estão na pasta 'dados/'")
@@ -429,3 +437,4 @@ except Exception as e:
     
     if st.checkbox("🔧 Mostrar detalhes do erro (modo desenvolvedor)"):
         st.exception(e)
+
