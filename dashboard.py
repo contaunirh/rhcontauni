@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import os
+from datetime import datetime
 
 st.set_page_config(page_title="ContaUni - Indicadores RH", layout="wide")
 
@@ -26,149 +27,117 @@ def carregar_dados():
 # MONTA A BASE UNIFICADA
 # ===============================
 def montar_base(adm, dem, exames, epi, adt13, produtores):
-    # Tratamento de produtor
-    prod = produtores.rename(columns={"ProdutorRural": "Produtor", "Filial": "FilialProdutor"})
+    # Tratamento de produtor - mapeia Filial para ProdutorRural
+    prod_map = produtores.set_index('Filial')['ProdutorRural'].to_dict()
 
-    # ADM
+    # ===== ADMISSÕES =====
     adm_base = adm.copy()
-    # Converte coluna de data para formato sem hora
     if "DataAdmissao" in adm_base.columns:
         adm_base["DataAdmissao"] = pd.to_datetime(adm_base["DataAdmissao"]).dt.date
-    elif "Data" in adm_base.columns:
-        adm_base["Data"] = pd.to_datetime(adm_base["Data"]).dt.date
+        adm_base["Mes"] = pd.to_datetime(adm_base["DataAdmissao"]).dt.strftime('%m/%Y')
     
-    adm_base["TipoMovimento"] = "Admissao"
-    adm_base["ValorExame"] = 0
-    adm_base["ValorEPI"] = 0
+    adm_base["TipoMovimento"] = "Admissão"
+    adm_base["Produtor"] = adm_base["Filial"].map(prod_map)
     adm_base["Rescisao"] = 0
     adm_base["MultaFGTS"] = 0
+    adm_base["ValorExame"] = 0
+    adm_base["ValorEPI"] = 0
     adm_base["ADT13"] = 0
     adm_base["Decimo13"] = 0
     adm_base["Ferias"] = 0
 
-    # DEMISSÕES / RESCISÕES
+    # ===== DEMISSÕES/RESCISÕES =====
     dem_base = dem.copy()
-    # Converte coluna de data para formato sem hora
     if "DataDemissao" in dem_base.columns:
         dem_base["DataDemissao"] = pd.to_datetime(dem_base["DataDemissao"]).dt.date
-    elif "Data" in dem_base.columns:
-        dem_base["Data"] = pd.to_datetime(dem_base["Data"]).dt.date
+        dem_base["Mes"] = pd.to_datetime(dem_base["DataDemissao"]).dt.strftime('%m/%Y')
     
-    dem_base["TipoMovimento"] = "Demissao"
-    dem_base.rename(columns={"LiquidoRescisao": "Rescisao", "MultaFGTS": "MultaFGTS"}, inplace=True)
+    dem_base["TipoMovimento"] = "Demissão"
+    dem_base["Produtor"] = dem_base["Filial"].map(prod_map)
+    dem_base.rename(columns={"LiquidoRescisao": "Rescisao"}, inplace=True)
+    
+    # Garante que MultaFGTS existe
+    if "MultaFGTS" not in dem_base.columns:
+        dem_base["MultaFGTS"] = 0
+    
     dem_base["ValorExame"] = 0
     dem_base["ValorEPI"] = 0
     dem_base["ADT13"] = 0
     dem_base["Decimo13"] = 0
     dem_base["Ferias"] = 0
 
-    # EXAMES
+    # ===== EXAMES =====
     exames_base = exames.copy()
-    # Converte coluna de data para formato sem hora
     if "DataExame" in exames_base.columns:
         exames_base["DataExame"] = pd.to_datetime(exames_base["DataExame"]).dt.date
-    elif "Data" in exames_base.columns:
-        exames_base["Data"] = pd.to_datetime(exames_base["Data"]).dt.date
+        exames_base["Mes"] = pd.to_datetime(exames_base["DataExame"]).dt.strftime('%m/%Y')
     
     exames_base["TipoMovimento"] = "Exame"
+    exames_base["Produtor"] = exames_base["Filial"].map(prod_map)
     exames_base.rename(columns={"ValorExame": "ValorExame"}, inplace=True)
     exames_base["Rescisao"] = 0
-    exames_base["ValorEPI"] = 0
     exames_base["MultaFGTS"] = 0
+    exames_base["ValorEPI"] = 0
     exames_base["ADT13"] = 0
     exames_base["Decimo13"] = 0
     exames_base["Ferias"] = 0
 
-    # EPI / UNIFORMES
+    # ===== EPI/UNIFORMES =====
     epi_base = epi.copy()
-    # Converte coluna de data para formato sem hora
     if "DataEntrega" in epi_base.columns:
         epi_base["DataEntrega"] = pd.to_datetime(epi_base["DataEntrega"]).dt.date
-    elif "Data" in epi_base.columns:
-        epi_base["Data"] = pd.to_datetime(epi_base["Data"]).dt.date
+        epi_base["Mes"] = pd.to_datetime(epi_base["DataEntrega"]).dt.strftime('%m/%Y')
     
-    epi_base["TipoMovimento"] = "EPI"
-    epi_base.rename(columns={"ValorEPI": "ValorEPI"}, inplace=True)
+    epi_base["TipoMovimento"] = "EPI/Uniforme"
+    epi_base["Produtor"] = epi_base["Filial"].map(prod_map)
+    epi_base.rename(columns={"ValorItem": "ValorEPI"}, inplace=True)
+    
+    if "ValorEPI" not in epi_base.columns:
+        epi_base["ValorEPI"] = 0
+    
     epi_base["Rescisao"] = 0
-    epi_base["ValorExame"] = 0
     epi_base["MultaFGTS"] = 0
+    epi_base["ValorExame"] = 0
     epi_base["ADT13"] = 0
     epi_base["Decimo13"] = 0
     epi_base["Ferias"] = 0
 
-    # ADT 13 / FERIAS
+    # ===== ADT13/13º/FÉRIAS =====
     adt_base = adt13.copy()
-    # Converte coluna de data para formato sem hora
-    if "DataPagamento" in adt_base.columns:
-        adt_base["DataPagamento"] = pd.to_datetime(adt_base["DataPagamento"]).dt.date
-    elif "Data" in adt_base.columns:
-        adt_base["Data"] = pd.to_datetime(adt_base["Data"]).dt.date
     
-    # Identifica qual coluna tem o tipo de lançamento
-    coluna_tipo = None
-    for col in ["Lancamento", "TipoLancamento", "Tipo", "TipoExtra"]:
-        if col in adt_base.columns:
-            coluna_tipo = col
-            break
+    # Cria coluna Mes se não existir
+    if "Mes" not in adt_base.columns and "Data" in adt_base.columns:
+        adt_base["Mes"] = pd.to_datetime(adt_base["Data"]).dt.strftime('%m/%Y')
     
-    # Identifica qual coluna tem o valor
-    coluna_valor = None
-    for col in ["ValorLiquido", "Valor", "ValorTotal", "Total"]:
-        if col in adt_base.columns:
-            coluna_valor = col
-            break
+    adt_base["Produtor"] = adt_base["Filial"].map(prod_map)
     
-    # Se não encontrou as colunas necessárias, cria valores zerados
-    if coluna_tipo is None or coluna_valor is None:
-        adt_base["TipoExtra"] = ""
-        adt_base["TipoMovimento"] = ""
-        adt_base["ValorExame"] = 0
-        adt_base["ValorEPI"] = 0
-        adt_base["Rescisao"] = 0
-        adt_base["MultaFGTS"] = 0
-        adt_base["ADT13"] = 0
-        adt_base["Decimo13"] = 0
-        adt_base["Ferias"] = 0
-    else:
-        # Cria a coluna TipoExtra se não existir
-        if coluna_tipo != "TipoExtra":
-            adt_base["TipoExtra"] = adt_base[coluna_tipo]
-        
-        # Define o TipoMovimento baseado no TipoExtra
-        adt_base["TipoMovimento"] = adt_base["TipoExtra"].apply(
+    # Identifica tipo de lançamento
+    if "Lancamento" in adt_base.columns:
+        adt_base["TipoExtra"] = adt_base["Lancamento"]
+        adt_base["TipoMovimento"] = adt_base["Lancamento"].apply(
             lambda x: "ADT 13º" if x == "ADT13" else ("13º Salário" if x == "13" else "Férias")
         )
-        
-        adt_base["ValorExame"] = 0
-        adt_base["ValorEPI"] = 0
-        adt_base["MultaFGTS"] = 0
-
-        # Cria as colunas de valores baseadas no tipo de lançamento
+    
+    # Distribui valores
+    if "ValorLiquido" in adt_base.columns:
         adt_base["ADT13"] = adt_base.apply(
-            lambda x: x[coluna_valor] if x["TipoExtra"] == "ADT13" else 0, axis=1
+            lambda x: x["ValorLiquido"] if x.get("Lancamento") == "ADT13" else 0, axis=1
         )
         adt_base["Decimo13"] = adt_base.apply(
-            lambda x: x[coluna_valor] if x["TipoExtra"] == "13" else 0, axis=1
+            lambda x: x["ValorLiquido"] if x.get("Lancamento") == "13" else 0, axis=1
         )
         adt_base["Ferias"] = adt_base.apply(
-            lambda x: x[coluna_valor] if x["TipoExtra"] == "Ferias" else 0, axis=1
+            lambda x: x["ValorLiquido"] if x.get("Lancamento") == "Ferias" else 0, axis=1
         )
-        
-        # Zera Rescisao pois será usado apenas nas demissões
-        adt_base["Rescisao"] = 0
+    
+    adt_base["Rescisao"] = 0
+    adt_base["MultaFGTS"] = 0
+    adt_base["ValorExame"] = 0
+    adt_base["ValorEPI"] = 0
 
-    # JUNÇÃO FINAL
+    # ===== JUNÇÃO FINAL =====
     base = pd.concat([adm_base, dem_base, exames_base, epi_base, adt_base], ignore_index=True)
-
-    # Verifica se existe coluna Produtor na base antes de fazer merge
-    if "Produtor" in base.columns and "Produtor" in prod.columns:
-        base = base.merge(prod, left_on="Produtor", right_on="Produtor", how="left")
-    else:
-        # Se não existe Produtor, adiciona colunas vazias do arquivo de produtores
-        for col in prod.columns:
-            if col not in base.columns:
-                base[col] = None
-
+    
     return base.fillna(0)
 
 
@@ -191,32 +160,20 @@ try:
 
     colunas_filtro = {
         "Produtor Rural": "Produtor",
-        "Filial": "FilialProdutor",
+        "Filial": "Filial",
         "Unidade": "Unidade",
         "Setor": "Setor",
         "Mês": "Mes",
         "Tipo de movimento": "TipoMovimento",
-        "Tipo Extra (ADT13 / 13 / Férias)": "TipoExtra"
     }
 
     filtros = {}
 
     for label, coluna in colunas_filtro.items():
         if coluna in base.columns:
-            # Remove valores nulos e converte tudo para string para evitar erro de comparação
             valores_unicos = base[coluna].dropna().unique()
-            # Converte para string e depois ordena
             valores_unicos = sorted([str(v) for v in valores_unicos])
             selecao = st.sidebar.multiselect(label, valores_unicos)
-            # Converte de volta para o tipo original ao filtrar
-            if selecao:
-                # Tenta manter o tipo original
-                try:
-                    # Se a coluna original tinha números, converte de volta
-                    if base[coluna].dtype in ['int64', 'float64']:
-                        selecao = [float(v) if '.' in v else int(v) for v in selecao]
-                except:
-                    pass  # Mantém como string se não conseguir converter
             filtros[coluna] = selecao
 
     # ===============================
@@ -226,7 +183,6 @@ try:
 
     for coluna, valores in filtros.items():
         if valores:
-            # Converte os valores da coluna para string para comparação
             filtro = filtro[filtro[coluna].astype(str).isin([str(v) for v in valores])]
 
     # ===============================
@@ -234,12 +190,12 @@ try:
     # ===============================
     col1, col2, col3, col4, col5, col6 = st.columns(6)
 
-    col1.metric("Admissões", filtro[filtro["TipoMovimento"] == "Admissao"].shape[0])
-    col2.metric("Demissões", filtro[filtro["TipoMovimento"] == "Demissao"].shape[0])
+    col1.metric("Admissões", filtro[filtro["TipoMovimento"] == "Admissão"].shape[0])
+    col2.metric("Demissões", filtro[filtro["TipoMovimento"] == "Demissão"].shape[0])
     col3.metric("Rescisão R$", f"{filtro['Rescisao'].sum():,.2f}")
     col4.metric("Multa FGTS R$", f"{filtro['MultaFGTS'].sum():,.2f}")
     col5.metric("Exames R$", f"{filtro['ValorExame'].sum():,.2f}")
-    col6.metric("Uniformes e EPI R$", f"{filtro['ValorEPI'].sum():,.2f}")
+    col6.metric("EPI/Uniformes R$", f"{filtro['ValorEPI'].sum():,.2f}")
 
     col7, col8, col9 = st.columns(3)
     col7.metric("Férias R$", f"{filtro['Ferias'].sum():,.2f}")
@@ -252,16 +208,27 @@ try:
     st.write("---")
     st.subheader("Custos por Produtor Rural")
 
-    if not filtro.empty:
+    if not filtro.empty and "Produtor" in filtro.columns:
         graf = (
             filtro.groupby("Produtor")[["Rescisao", "ValorExame", "ValorEPI",
                                         "ADT13", "Decimo13", "Ferias", "MultaFGTS"]]
             .sum()
             .reset_index()
         )
+        
+        # Remove produtores sem nome
+        graf = graf[graf["Produtor"].notna() & (graf["Produtor"] != "0") & (graf["Produtor"] != 0)]
 
-        # Renomeia as colunas para exibição no gráfico
-        graf_display = graf.rename(columns={
+        # Prepara dados para gráfico
+        graf_melted = graf.melt(
+            id_vars=["Produtor"],
+            value_vars=["Rescisao", "ValorExame", "ValorEPI", "ADT13", "Decimo13", "Ferias", "MultaFGTS"],
+            var_name="Tipo",
+            value_name="Valor"
+        )
+        
+        # Renomeia para melhor visualização
+        nomes_display = {
             "Rescisao": "Rescisão Líquida",
             "ValorExame": "Exames",
             "ValorEPI": "EPI/Uniformes",
@@ -269,26 +236,83 @@ try:
             "Decimo13": "13º Salário",
             "Ferias": "Férias",
             "MultaFGTS": "Multa FGTS"
-        })
+        }
+        graf_melted["Tipo"] = graf_melted["Tipo"].map(nomes_display)
 
         fig = px.bar(
-            graf_display,
+            graf_melted,
             x="Produtor",
-            y=["Rescisão Líquida", "Exames", "EPI/Uniformes", "ADT 13º", "13º Salário", "Férias", "Multa FGTS"],
-            barmode="group",
-            title="Custos por Produtor",
+            y="Valor",
+            color="Tipo",
+            title="Custos por Produtor Rural",
             height=500,
+            barmode="group"
         )
+        
+        fig.update_layout(
+            xaxis_title="Produtor Rural",
+            yaxis_title="Valor (R$)",
+            legend_title="Tipo de Custo"
+        )
+        
         st.plotly_chart(fig, use_container_width=True)
     else:
         st.warning("Nenhum dado encontrado para os filtros selecionados.")
 
     # ===============================
-    # TABELA DETALHADA
+    # TABELA DETALHADA COM EXPORTAÇÃO
     # ===============================
     st.write("---")
     st.subheader("Detalhamento dos registros")
-    st.dataframe(filtro)
+    
+    # Botões de exportação
+    col_exp1, col_exp2, col_exp3 = st.columns([1, 1, 4])
+    
+    with col_exp1:
+        # Exportar para CSV
+        csv = filtro.to_csv(index=False).encode('utf-8-sig')
+        st.download_button(
+            label="📥 Exportar CSV",
+            data=csv,
+            file_name=f'relatorio_rh_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv',
+            mime='text/csv',
+        )
+    
+    with col_exp2:
+        # Exportar para Excel
+        from io import BytesIO
+        buffer = BytesIO()
+        with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+            filtro.to_excel(writer, sheet_name='Dados', index=False)
+        
+        st.download_button(
+            label="📥 Exportar Excel",
+            data=buffer.getvalue(),
+            file_name=f'relatorio_rh_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx',
+            mime='application/vnd.ms-excel'
+        )
+    
+    # Mostra a tabela
+    st.dataframe(filtro, use_container_width=True, height=400)
+    
+    # Estatísticas adicionais
+    st.write("---")
+    st.subheader("Resumo Estatístico")
+    
+    col_stat1, col_stat2, col_stat3 = st.columns(3)
+    
+    with col_stat1:
+        st.metric("Total de Registros", len(filtro))
+        st.metric("Total Geral", f"R$ {(filtro['Rescisao'].sum() + filtro['ValorExame'].sum() + filtro['ValorEPI'].sum() + filtro['ADT13'].sum() + filtro['Decimo13'].sum() + filtro['Ferias'].sum() + filtro['MultaFGTS'].sum()):,.2f}")
+    
+    with col_stat2:
+        if len(filtro) > 0:
+            st.metric("Produtores Únicos", filtro["Produtor"].nunique())
+            st.metric("Filiais Únicas", filtro["Filial"].nunique())
+    
+    with col_stat3:
+        if "Mes" in filtro.columns:
+            st.metric("Meses no Período", filtro["Mes"].nunique())
 
 except FileNotFoundError as e:
     st.error(f"❌ Erro ao carregar arquivos: {e}")
@@ -297,6 +321,5 @@ except Exception as e:
     st.error(f"❌ Erro no sistema: {str(e)}")
     st.info("Entre em contato com o suporte técnico.")
     
-    # Botão para debug (remover em produção)
     if st.checkbox("Mostrar detalhes do erro (debug)"):
         st.exception(e)
