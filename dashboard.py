@@ -57,7 +57,7 @@ def montar_base(adm, dem, exames, epi, adt13, produtores):
     
     # Mapeamento correto da coluna de rescisão - testa várias possibilidades
     rescisao_encontrada = False
-    for col_name in ["LiquidoRe", "LiquidoRescisao", "Liquido", "ValorLiquido", "Rescisao"]:
+    for col_name in ["ValorLiquidoRescisao", "LiquidoRe", "LiquidoRescisao", "Liquido", "ValorLiquido", "Rescisao"]:
         if col_name in dem_base.columns:
             dem_base["Rescisao"] = dem_base[col_name]
             rescisao_encontrada = True
@@ -167,9 +167,25 @@ try:
         st.write("**Demissões (colunas originais):**", list(dem.columns))
         st.write("**Amostra de dados de demissões:**")
         st.dataframe(dem.head(2))
+        
         st.write("---")
-        st.write("**Base unificada - Rescisão:**")
-        st.dataframe(base[base["TipoMovimento"] == "Demissão"][["Funcionario", "CPF", "TipoMovimento", "Rescisao", "MultaFGTS"]].head(5))
+        st.write("**Verificação da coluna Rescisao na base:**")
+        demissoes_base = base[base["TipoMovimento"] == "Demissão"]
+        if len(demissoes_base) > 0:
+            st.write(f"Total de demissões: {len(demissoes_base)}")
+            st.write(f"Soma de Rescisao: {demissoes_base['Rescisao'].sum()}")
+            st.dataframe(demissoes_base[["Funcionario", "Filial", "Produtor", "Rescisao", "MultaFGTS"]].head(5))
+        else:
+            st.write("Nenhuma demissão encontrada!")
+        
+        st.write("---")
+        st.write("**Teste de mapeamento de colunas:**")
+        colunas_teste = ["ValorLiquidoRescisao", "LiquidoRe", "LiquidoRescisao", "Liquido", "ValorLiquido", "Rescisao"]
+        for col in colunas_teste:
+            if col in dem.columns:
+                st.write(f"✅ Coluna '{col}' EXISTE - Valor exemplo: {dem[col].iloc[0] if len(dem) > 0 else 'N/A'}")
+            else:
+                st.write(f"❌ Coluna '{col}' não existe")
     
     st.write("---")
 
