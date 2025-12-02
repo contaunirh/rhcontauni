@@ -170,8 +170,20 @@ try:
 
     for label, coluna in colunas_filtro.items():
         if coluna in base.columns:
-            valores_unicos = sorted(list(base[coluna].unique()))
+            # Remove valores nulos e converte tudo para string para evitar erro de comparação
+            valores_unicos = base[coluna].dropna().unique()
+            # Converte para string e depois ordena
+            valores_unicos = sorted([str(v) for v in valores_unicos])
             selecao = st.sidebar.multiselect(label, valores_unicos)
+            # Converte de volta para o tipo original ao filtrar
+            if selecao:
+                # Tenta manter o tipo original
+                try:
+                    # Se a coluna original tinha números, converte de volta
+                    if base[coluna].dtype in ['int64', 'float64']:
+                        selecao = [float(v) if '.' in v else int(v) for v in selecao]
+                except:
+                    pass  # Mantém como string se não conseguir converter
             filtros[coluna] = selecao
 
     # ===============================
@@ -181,7 +193,8 @@ try:
 
     for coluna, valores in filtros.items():
         if valores:
-            filtro = filtro[filtro[coluna].isin(valores)]
+            # Converte os valores da coluna para string para comparação
+            filtro = filtro[filtro[coluna].astype(str).isin([str(v) for v in valores])]
 
     # ===============================
     # CARDS RESUMO
