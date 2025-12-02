@@ -127,7 +127,14 @@ def montar_base(adm, dem, exames, epi, adt13, produtores):
     # JUNÇÃO FINAL
     base = pd.concat([adm_base, dem_base, exames_base, epi_base, adt_base], ignore_index=True)
 
-    base = base.merge(prod, left_on="Produtor", right_on="Produtor", how="left")
+    # Verifica se existe coluna Produtor na base antes de fazer merge
+    if "Produtor" in base.columns and "Produtor" in prod.columns:
+        base = base.merge(prod, left_on="Produtor", right_on="Produtor", how="left")
+    else:
+        # Se não existe Produtor, adiciona colunas vazias do arquivo de produtores
+        for col in prod.columns:
+            if col not in base.columns:
+                base[col] = None
 
     return base.fillna(0)
 
